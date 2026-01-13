@@ -1,0 +1,24 @@
+# Regras de alerta para WANGuard Exporter
+groups:
+  - name: wanguard_exporter_alerts
+    interval: 30s
+    rules:
+      # Alerta se API estiver indisponível
+      - alert: WANGuardAPIDown
+        expr: wanguard_api_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "WANGuard API está indisponível"
+          description: "WANGuard API {{ $labels.api_address }} está indisponível há mais de 1 minuto."
+
+      # Alerta se exporter não estiver respondendo
+      - alert: WANGuardExporterDown
+        expr: up{job="wanguard_exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "WANGuard Exporter está indisponível"
+          description: "WANGuard Exporter em {{ $labels.instance }} está indisponível há mais de 2 minutos."
