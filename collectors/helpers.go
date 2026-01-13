@@ -1,10 +1,10 @@
 package collectors
 
 import (
-	"strconv"
-	"strings"
+	"github.com/tomvil/wanguard_exporter/logging"
 
-	"github.com/prometheus/common/log"
+	"strings"
+	"strconv"
 )
 
 func bitsToBytes(b float64) float64 {
@@ -26,13 +26,13 @@ func getFloat64(v interface{}) float64 {
 
 		result, err := strconv.ParseFloat(r.Replace(v), 64)
 		if err != nil {
-			log.Errorf("was not able to parse %T to float64!", v)
+			logging.Error("was not able to parse %T to float64!", v)
 			return 0
 		}
 
 		return float64(result)
 	default:
-		log.Errorf("conversion to float64 from %T is not supported", v)
+		logging.Error("conversion to float64 from %T is not supported", v)
 		return 0
 	}
 }

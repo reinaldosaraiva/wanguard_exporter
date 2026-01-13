@@ -1,8 +1,9 @@
 package collectors
 
 import (
+	"github.com/tomvil/wanguard_exporter/logging"
+
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 	wgc "github.com/tomvil/wanguard_exporter/client"
 )
 
@@ -13,7 +14,7 @@ type ComponentsCollector struct {
 }
 
 func NewComponentsCollector(wgclient *wgc.Client) *ComponentsCollector {
-	prefix := "wanguard_component_"
+	prefix := "wanguard_component"
 	return &ComponentsCollector{
 		wgClient:             wgclient,
 		ComponentsCategories: []string{"bgp_connector", "filter", "sensor"},
@@ -39,7 +40,7 @@ func (c *ComponentsCollector) Collect(ch chan<- prometheus.Metric) {
 
 			err := c.wgClient.GetParsed(component["href"]+"/status", &params)
 			if err != nil {
-				log.Errorln(err.Error())
+				logging.Error("Error: %v", err)
 				continue
 			}
 

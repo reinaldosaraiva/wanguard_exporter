@@ -8,27 +8,27 @@ import (
 	wgc "github.com/tomvil/wanguard_exporter/client"
 )
 
-func TestNewSensorsCollector(t *testing.T) {
+func TestNewComponentsCollector(t *testing.T) {
 	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sensorsCollector := NewSensorsCollector(wgcClient)
-	if sensorsCollector == nil {
+	componentsCollector := NewComponentsCollector(wgcClient)
+	if componentsCollector == nil {
 		t.Error("Expected non-nil collector")
 	}
 }
 
-func TestSensorsCollectorDescribe(t *testing.T) {
+func TestComponentsCollectorDescribe(t *testing.T) {
 	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sensorsCollector := NewSensorsCollector(wgcClient)
+	componentsCollector := NewComponentsCollector(wgcClient)
 	ch := make(chan *prometheus.Desc, 1)
-	sensorsCollector.Describe(ch)
+	componentsCollector.Describe(ch)
 	close(ch)
 
 	if len(ch) != 1 {

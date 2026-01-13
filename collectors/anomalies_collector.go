@@ -1,10 +1,11 @@
 package collectors
 
 import (
+	"github.com/tomvil/wanguard_exporter/logging"
+
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 	wgc "github.com/tomvil/wanguard_exporter/client"
 )
 
@@ -30,7 +31,7 @@ type Anomaly struct {
 }
 
 func NewAnomaliesCollector(wgclient *wgc.Client) *AnomaliesCollector {
-	prefix := "wanguard_anomalies_"
+	prefix := "wanguard_anomalies"
 	return &AnomaliesCollector{
 		wgClient:          wgclient,
 		AnomalyActive:     prometheus.NewDesc(prefix+"active", "Active anomalies at the moment", []string{"prefix", "anomaly", "anomaly_id", "duration", "pkts_s", "packets", "bits_s", "bits"}, nil),
@@ -74,14 +75,14 @@ func collectFinishedAnomaliesTotal(desc *prometheus.Desc, wgclient *wgc.Client, 
 
 	err := wgclient.GetParsed("anomalies?status=Finished&count=true", &finishedAnomaliesCount)
 	if err != nil {
-		log.Errorln(err.Error())
+		logging.Error("ParseFloat error: %v", err)
 		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, 0)
 		return
 	}
 
 	r, err := strconv.ParseFloat(finishedAnomaliesCount.Count, 64)
 	if err != nil {
-		log.Errorln(err.Error())
+		logging.Error("ParseFloat error: %v", err)
 		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, 0)
 		return
 	}

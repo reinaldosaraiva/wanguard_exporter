@@ -1,8 +1,9 @@
 package collectors
 
 import (
+	"github.com/tomvil/wanguard_exporter/logging"
+
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 	wgc "github.com/tomvil/wanguard_exporter/client"
 )
 
@@ -51,8 +52,8 @@ func NewLicenseCollector(wgclient *wgc.Client) *LicenseCollector {
 		LicensedFilters:                prometheus.NewDesc(prefix+"filters_available", "Licensed filters available", nil, nil),
 		LicensedFiltersUsed:            prometheus.NewDesc(prefix+"filters_used", "Licensed filters used", nil, nil),
 		LicensedFiltersRemaining:       prometheus.NewDesc(prefix+"filters_remaining", "Licensed filters remaining", nil, nil),
-		LicenseSecondsRemaining:        prometheus.NewDesc(prefix+"seconds_remaining", "License seconds remaining", nil, nil),
-		LicenseSupportSecondsRemaining: prometheus.NewDesc(prefix+"support_seconds_remaining", "Support license seconds remaining", nil, nil),
+		LicenseSecondsRemaining:        prometheus.NewDesc(prefix+"license_seconds_remaining", "License expiration in seconds", nil, nil),
+		LicenseSupportSecondsRemaining: prometheus.NewDesc(prefix+"support_seconds_remaining", "Support expiration in seconds", nil, nil),
 	}
 }
 
@@ -74,14 +75,10 @@ func (c *LicenseCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *LicenseCollector) Collect(ch chan<- prometheus.Metric) {
 	var license License
 
-	err := c.wgClient.GetParsed(
-		"license_manager",
-		&license,
-	)
+	err := c.wgClient.GetParsed("license_manager", &license)
 	if err != nil {
-		log.Errorln(
-			err.Error(),
-		)
+		logging.Error("Error: %v", err)
+		return
 	}
 
 	ch <- prometheus.MustNewConstMetric(c.SoftwareVersion, prometheus.GaugeValue, 1, license.SoftwareVersion)
@@ -94,6 +91,6 @@ func (c *LicenseCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(c.LicensedFilters, prometheus.GaugeValue, getFloat64(license.LicensedFilters))
 	ch <- prometheus.MustNewConstMetric(c.LicensedFiltersUsed, prometheus.GaugeValue, getFloat64(license.LicensedFiltersUsed))
 	ch <- prometheus.MustNewConstMetric(c.LicensedFiltersRemaining, prometheus.GaugeValue, getFloat64(license.LicensedFiltersRemaining))
-	ch <- prometheus.MustNewConstMetric(c.LicenseSecondsRemaining, prometheus.GaugeValue, toSeconds(getFloat64(license.LicenseDaysRemaining)))
-	ch <- prometheus.MustNewConstMetric(c.LicenseSupportSecondsRemaining, prometheus.GaugeValue, toSeconds(getFloat64(license.LicenseSupportDaysRemaining)))
+	ch <- prometheus.MustNewConstMetric(c.LicenseSecondsRemaining, prometheus.GaugeValue, getFloat64(license.LicenseDaysRemaining)*86400)
+	ch <- prometheus.MustNewConstMetric(c.LicenseSupportSecondsRemaining, prometheus.GaugeValue, getFloat64(license.LicenseSupportDaysRemaining)*86400)
 }
