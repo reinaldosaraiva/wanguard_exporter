@@ -1,8 +1,55 @@
 # wanguard_exporter
-This is prometheus exporter for Andrisoft WANGuard API.
+
+Prometheus exporter for Andrisoft WANGuard API with security hardening and production-ready Docker deployment.
+
+## Quick Start (Docker - Recommended)
+
+```bash
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Edit .env with your WANGuard credentials
+nano .env
+
+# 3. Start the exporter
+docker-compose up -d
+
+# 4. Verify metrics
+curl http://localhost:9868/metrics
+```
+
+See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) for detailed instructions.
 
 ## Install
-```go install github.com/tomvil/wanguard_exporter@latest```
+
+### Docker (Recommended)
+```bash
+docker pull wanguard_exporter:1.6
+```
+
+### From Source
+```bash
+go install github.com/tomvil/wanguard_exporter@latest
+```
+
+## Security Improvements
+
+This fork includes security hardening based on code review analysis:
+
+### Fixed Vulnerabilities
+- **CRITICAL**: SSRF prevention via URL.ResolveReference host validation
+- **HIGH**: DoS protection with io.LimitReader (10MB response limit)
+- **HIGH**: HTTP blocked for remote hosts (HTTPS enforced, localhost exception)
+- **MEDIUM**: Path traversal prevention using proper URL resolution
+- **MEDIUM**: Prometheus label cardinality explosion mitigation
+
+### Security Features
+- TLS 1.2+ enforcement
+- Secure HTTP client with timeouts (30s total, 10s TLS handshake)
+- Credential leak prevention on redirects
+- Input validation for API addresses
+- Non-root Docker user (UID 1000)
+- Read-only filesystem in Docker container
 
 ## Configuration flags
 Name     | Description | Default
@@ -31,9 +78,47 @@ This will be used automatically if `api.password` flag is not set.
 
 
 ## Usage
-`./wanguard_exporter -api.address="127.0.0.1:81" -api.username="admin" api.password="password"`
+
+### Docker
+```bash
+docker-compose up -d
+```
+
+Environment variables (in `.env`):
+```env
+WANGUARD_ADDRESS=http://wanguard-server:81
+WANGUARD_USERNAME=admin
+WANGUARD_PASSWORD=your-password
+```
+
+### Binary
+```bash
+./wanguard_exporter \
+  -api.address="https://wanguard-server:81" \
+  -api.username="admin" \
+  -api.password="password"
+```
+
+**Note**: HTTP is only allowed for localhost (127.0.0.1, ::1). Remote connections require HTTPS.
+
+## Additional Documentation
+
+- [Docker Quickstart Guide](DOCKER_QUICKSTART.md) - 3-step setup
+- [Docker Deployment Guide](docs/docker/DEPLOYMENT_GUIDE.md) - Production deployment
+- [Production Validation Checklist](docs/docker/PRODUCTION_VALIDATION.md)
+- [Security Hardening Details](docs/security/FASE2_HTTP_CLIENT_ROBUSTO.md)
 
 ## Metrics
+
+### API Health Metric (NEW)
+Metric | Type | Description | Labels
+-------|------|-------------|-------
+wanguard_api_up | gauge | Whether the WANGuard API is reachable (1 = up, 0 = down) | api_address
+
+Example:
+```
+wanguard_api_up{api_address="wanguard-server:81"} 1
+```
 
 ### License Collector
 Metric | Type | Description | Labels
