@@ -1,0 +1,36 @@
+# Binários
+wanguard_exporter
+*.exe
+*.out
+*.test
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentação
+docs/
+README.md
+*.md
+
+# Testes
+*_test.go
+testdata/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Dependências locais (cache)
+vendor/
+
+# Logs
+*.log
+
+# Ambiente
+.env
+.env.*
