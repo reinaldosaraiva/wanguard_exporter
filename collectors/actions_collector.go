@@ -1,8 +1,9 @@
 package collectors
 
 import (
+	"github.com/tomvil/wanguard_exporter/logging"
+
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 	wgc "github.com/tomvil/wanguard_exporter/client"
 )
 
@@ -24,7 +25,7 @@ type Action struct {
 }
 
 func NewActionsCollector(wgclient *wgc.Client) *ActionsCollector {
-	prefix := "wanguard_action_"
+	prefix := "wanguard_action"
 	return &ActionsCollector{
 		wgClient:     wgclient,
 		ActionStatus: prometheus.NewDesc(prefix+"status", "Status of the response actions", []string{"response_name", "action_name", "action_type", "response_branch"}, nil),
@@ -55,7 +56,7 @@ func (c *ActionsCollector) Collect(ch chan<- prometheus.Metric) {
 
 			err := c.wgClient.GetParsed(action.ActionHref+"/status", &params)
 			if err != nil {
-				log.Errorln(err.Error())
+				logging.Error("Error: %v", err)
 				continue
 			}
 

@@ -13,7 +13,10 @@ type Response struct {
 }
 
 func TestNewClient(t *testing.T) {
-	client := NewClient("http://127.0.0.1", "u", "p")
+	client, err := NewClient("http://127.0.0.1", "u", "p")
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
 
 	if client.apiAddress != "http://127.0.0.1" {
 		t.Errorf("Expected http://127.0.0.1, got %s", client.apiAddress)
@@ -26,7 +29,20 @@ func TestNewClient(t *testing.T) {
 	if client.apiPassword != "p" {
 		t.Errorf("Expected password, got %s", client.apiPassword)
 	}
+}
 
+func TestNewClientInvalidAddress(t *testing.T) {
+	_, err := NewClient("invalid://url", "u", "p")
+	if err == nil {
+		t.Error("Expected error for invalid address")
+	}
+}
+
+func TestNewClientMissingHost(t *testing.T) {
+	_, err := NewClient("http://", "u", "p")
+	if err == nil {
+		t.Error("Expected error for missing host")
+	}
 }
 
 func TestBasicAuth(t *testing.T) {
@@ -36,7 +52,6 @@ func TestBasicAuth(t *testing.T) {
 	if auth != expectedAuth {
 		t.Errorf("Expected %s, got %s", expectedAuth, auth)
 	}
-
 }
 
 func TestGet(t *testing.T) {
@@ -54,7 +69,11 @@ func TestGet(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, "u", "p")
+	client, err := NewClient(server.URL, "u", "p")
+	if err != nil {
+		t.Fatalf(errMsgExpectedNoError, err)
+	}
+
 	body, err := client.Get("/test")
 	if err != nil {
 		t.Errorf(errMsgExpectedNoError, err)
@@ -67,16 +86,20 @@ func TestGet(t *testing.T) {
 
 func TestGetParsed(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write([]byte(`{"test": "success"}`)); err != nil {
 			t.Errorf(errMsgExpectedNoError, err)
 		}
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, "u", "p")
+	client, err := NewClient(server.URL, "u", "p")
+	if err != nil {
+		t.Fatalf(errMsgExpectedNoError, err)
+	}
 
 	var response Response
-	err := client.GetParsed("/test", &response)
+	err = client.GetParsed("/test", &response)
 	if err != nil {
 		t.Errorf(errMsgExpectedNoError, err)
 	}
@@ -88,14 +111,19 @@ func TestGetParsed(t *testing.T) {
 
 func BenchmarkGetParsed(b *testing.B) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write([]byte(`{"test": "success"}`)); err != nil {
 			b.Errorf(errMsgExpectedNoError, err)
 		}
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, "u", "p")
+	client, err := NewClient(server.URL, "u", "p")
+	if err != nil {
+		b.Fatalf(errMsgExpectedNoError, err)
+	}
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var response Response
 		err := client.GetParsed("/test", &response)

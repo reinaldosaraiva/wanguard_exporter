@@ -8,9 +8,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
 	wgc "github.com/tomvil/wanguard_exporter/client"
 	"github.com/tomvil/wanguard_exporter/collectors"
+	"github.com/tomvil/wanguard_exporter/logging"
 )
 
 const (
@@ -39,11 +39,18 @@ var (
 	trafficCollectorEnabled       = flag.Bool("collector.traffic", true, "Expose traffic metrics")
 	firewallRulesCollectorEnabled = flag.Bool("collector.firewall_rules", true, "Expose firewall rules metrics")
 
-	cl []collectorsList
+	cl             []collectorsList
+	wanguardAPIUp *prometheus.GaugeVec
 )
 
 func main() {
 	flag.Parse()
+
+	// Inicializar logger
+	logging.Init("info", "text")
+
+	// Inicializar métricas do client
+	wanguardAPIUp = wgc.InitMetrics()
 
 	if *showVersion {
 		fmt.Println("wanguard_exporter")
@@ -56,14 +63,16 @@ func main() {
 	if *apiPassword == "" {
 		*apiPassword = os.Getenv("WANGUARD_PASSWORD")
 		if *apiPassword == "" {
-			log.Errorln(`Please set the WANGuard API Password!
+			logging.Fatal(`Please set to WANGuard API Password!
 		API Password can be set with api.password flag or
 		by setting WANGUARD_PASSWORD environment variable.`)
-			os.Exit(1)
 		}
 	}
 
-	wgClient := wgc.NewClient(*apiAddress, *apiUsername, *apiPassword)
+	wgClient, err := wgc.NewClient(*apiAddress, *apiUsername, *apiPassword)
+	if err != nil {
+		logging.Fatal("Failed to create WANGuard API client: %v", err)
+	}
 	cl = []collectorsList{
 		{licenseCollectorEnabled, collectors.NewLicenseCollector(wgClient)},
 		{announcementsCollectorEnabled, collectors.NewAnnouncementsCollector(wgClient)},
@@ -79,38 +88,49 @@ func main() {
 }
 
 func startServer() {
-	var landingPage = []byte(`<html>
-	<head><title>WANguard Exporter (Version ` + version + `)</title></head>
-	<body>
-	<h1>WANGuard Exporter</h1>
-	<p><a href="` + *metricsPath + `">Metrics</a></p>
-	<h2>More information:</h2>
-	<p><a href="https://github.com/tomvil/wanguard_exporter">github.com/tomvil/wanguard_exporter</a></p>
-	</body>
-	</html>`)
+	landingPage := []byte(`<html>
+<head><title>WANGuard Exporter</title></head>
+<body>
+<h1>WANGuard Exporter</h1>
+<p><a href="` + *metricsPath + `">Metrics</a></p>
+</body>
+</html>
+`)
 
-	log.Infof("Starting WANGuard exporter (Version: %s)", version)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write(landingPage); err != nil {
-			log.Fatal(err.Error())
-		}
-	})
-	http.HandleFunc(*metricsPath, handleMetricsRequest)
-
-	log.Infof("Listening for %s on %s", *metricsPath, *listenAddr)
-	log.Fatal(http.ListenAndServe(*listenAddr, nil))
-}
-
-func handleMetricsRequest(w http.ResponseWriter, r *http.Request) {
+	// Criar registry uma vez
 	registry := prometheus.NewRegistry()
 
+	// Registrar coletores
 	for _, c := range cl {
 		if *c.enabled {
 			registry.MustRegister(c.collector)
 		}
 	}
 
-	promhttp.HandlerFor(registry, promhttp.HandlerOpts{
-		ErrorLog:      log.NewErrorLogger(),
-		ErrorHandling: promhttp.ContinueOnError}).ServeHTTP(w, r)
+	// Registrar métricas do Go
+	registry.MustRegister(prometheus.NewGoCollector())
+	registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+
+	// Registrar métrica wanguard_api_up
+	if wanguardAPIUp != nil {
+		registry.MustRegister(wanguardAPIUp)
+	}
+
+	logging.Info("Starting WANGuard exporter (Version: %s)", version)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write(landingPage); err != nil {
+			logging.Error("Write error: %v", err)
+		}
+	})
+	http.HandleFunc(*metricsPath, func(w http.ResponseWriter, r *http.Request) {
+		promhttp.HandlerFor(registry, promhttp.HandlerOpts{
+			ErrorLog:      nil,
+			ErrorHandling: promhttp.ContinueOnError}).ServeHTTP(w, r)
+	})
+
+	logging.Info("Listening for %s on %s", *metricsPath, *listenAddr)
+	serverErr := http.ListenAndServe(*listenAddr, nil)
+	if serverErr != nil {
+		logging.Fatal("Server error: %v", serverErr)
+	}
 }

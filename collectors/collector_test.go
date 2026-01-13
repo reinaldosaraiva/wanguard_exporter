@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/prometheus/common/log"
 )
 
 func TestMain(m *testing.M) {
@@ -14,70 +13,59 @@ func TestMain(m *testing.M) {
 
 	mux.HandleFunc("/wanguard-api/v1/license_manager", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(licenseManagerPayload())); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/firewall_rules", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("count") == "true" {
 			if _, err := w.Write([]byte(`{"count": "1"}`)); err != nil {
-				log.Errorln(err.Error())
 			}
 		}
 
 		if r.URL.Query().Get("fields") == "firewall_rule_id,attack_id,source_prefix,destination_prefix,ip_protocol,from,until,pkts/s,bits/s,max_pkts/s,max_bits/s,pkts,bits" {
 			if _, err := w.Write([]byte(firewallRulesPayload())); err != nil {
-				log.Errorln(err.Error())
 			}
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/bgp_connectors", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(bgpConnectorsPayload())); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/bgp_connectors/1/status", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(`{"status": "Active"}`)); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/filters", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(filtersPayload())); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/packet_filters/1/status", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(`{"status": "Active"}`)); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/sensors", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(sensorsPayload())); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/flow_sensors/1/status", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(`{"status": "Active"}`)); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/bgp_announcements", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("status") == "Finished" && r.URL.Query().Get("count") == "true" {
 			if _, err := w.Write([]byte(`{"count": "1"}`)); err != nil {
-				log.Errorln(err.Error())
 			}
 		}
 
 		if r.URL.Query().Get("status") == "Active" && r.URL.Query().Get("fields") != "" {
 			if _, err := w.Write([]byte(announcementsPayload())); err != nil {
-				log.Errorln(err.Error())
 			}
 		}
 	})
@@ -85,38 +73,32 @@ func TestMain(m *testing.M) {
 	mux.HandleFunc("/wanguard-api/v1/anomalies", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("status") == "Finished" && r.URL.Query().Get("count") == "true" {
 			if _, err := w.Write([]byte(`{"count": "1"}`)); err != nil {
-				log.Errorln(err.Error())
 			}
 		}
 
 		if r.URL.Query().Get("status") == "Active" && r.URL.Query().Get("fields") != "" {
 			if _, err := w.Write([]byte(anomaliesPayload())); err != nil {
-				log.Errorln(err.Error())
 			}
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/responses", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(responsesPayload())); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/responses/1/actions", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(actionsPayload())); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/responses/1/actions/1/status", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(`{"status": "Active"}`)); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
 	mux.HandleFunc("/wanguard-api/v1/sensor_live_stats", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(sensorLiveStatsPayload())); err != nil {
-			log.Errorln(err.Error())
 		}
 	})
 
@@ -127,25 +109,21 @@ func TestMain(m *testing.M) {
 
 		if topType == "Countries" && (unit == "Packets" || unit == "Bits") && (direction == "Inbound" || direction == "Outbound") {
 			if _, err := w.Write([]byte(countriesTopPayload())); err != nil {
-				log.Errorln(err.Error())
 			}
 		}
 
 		if topType == "IP Versions" && (unit == "Packets" || unit == "Bits") && (direction == "Inbound" || direction == "Outbound") {
 			if _, err := w.Write([]byte(ipVersionsTopPayload())); err != nil {
-				log.Errorln(err.Error())
 			}
 		}
 
 		if topType == "IP Protocols" && (unit == "Packets" || unit == "Bits") && (direction == "Inbound" || direction == "Outbound") {
 			if _, err := w.Write([]byte(ipProtocolsTopPayload())); err != nil {
-				log.Errorln(err.Error())
 			}
 		}
 
 		if topType == "Talkers" && (unit == "Packets" || unit == "Bits") && (direction == "Inbound" || direction == "Outbound") {
 			if _, err := w.Write([]byte(talkersTopPayload())); err != nil {
-				log.Errorln(err.Error())
 			}
 		}
 	})

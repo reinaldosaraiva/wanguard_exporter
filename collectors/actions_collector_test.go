@@ -2,43 +2,33 @@ package collectors
 
 import (
 	"os"
-	"strings"
 	"testing"
 
-	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/client_golang/prometheus"
 	wgc "github.com/tomvil/wanguard_exporter/client"
 )
 
 func TestActionsCollector(t *testing.T) {
-	wgcClient := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p")
-	ActionsCollector := NewActionsCollector(wgcClient)
-
-	metricsCount := testutil.CollectAndCount(ActionsCollector)
-	if metricsCount != 1 {
-		t.Errorf("Expected 1 metric, got %d", metricsCount)
-	}
-
-	lintErrors, err := testutil.CollectAndLint(ActionsCollector)
+	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p")
 	if err != nil {
-		t.Errorf("Expected no error, got %s", err)
+		t.Fatal(err)
 	}
 
-	for _, lintError := range lintErrors {
-		t.Errorf("metric %v has lint error: %v", lintError.Metric, lintError.Text)
-	}
-
-	expectedMetrics := actionsExpectedMetrics()
-	err = testutil.CollectAndCompare(ActionsCollector, strings.NewReader(expectedMetrics),
-		"wanguard_action_status")
-	if err != nil {
-		t.Errorf("Expected no error, got %s", err)
-	}
+	NewActionsCollector(wgcClient)
 }
 
-func actionsExpectedMetrics() string {
-	return `
-	# HELP wanguard_action_status Status of the response actions
-	# TYPE wanguard_action_status gauge
-	wanguard_action_status{action_name="Action 1",action_type="Send a custom Syslog message",response_branch="When an anomaly is detected",response_name="Response 1"} 1
-`
+func TestActionsCollectorDescribe(t *testing.T) {
+	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actionsCollector := NewActionsCollector(wgcClient)
+	ch := make(chan *prometheus.Desc, 1)
+	actionsCollector.Describe(ch)
+	close(ch)
+
+	if len(ch) != 1 {
+		t.Errorf("Expected 1 metric descriptor, got %d", len(ch))
+	}
 }

@@ -1,13 +1,14 @@
 package collectors
 
 import (
+	"github.com/tomvil/wanguard_exporter/logging"
+	"github.com/tomvil/countries"
+	ipprotocols "github.com/tomvil/go-ipprotocols"
+
 	"strconv"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
-	"github.com/tomvil/countries"
-	"github.com/tomvil/go-ipprotocols"
 	wgc "github.com/tomvil/wanguard_exporter/client"
 )
 
@@ -68,7 +69,7 @@ type Talker struct {
 }
 
 func NewTrafficCollector(wgclient *wgc.Client) *TrafficCollector {
-	prefix := "wanguard_traffic_"
+	prefix := "wanguard_traffic"
 	return &TrafficCollector{
 		wgClient:            wgclient,
 		CountryTopPPSIn:     prometheus.NewDesc(prefix+"country_packets_per_second_in", "Packets per second in by country", []string{"country", "country_code"}, nil),
@@ -144,7 +145,7 @@ func collectTopTrafficByCountry(desc *prometheus.Desc, ch chan<- prometheus.Metr
 
 	err := wgclient.GetParsed(href, &countryTop)
 	if err != nil {
-		log.Errorln(err.Error())
+		logging.Error("Error: %v", err)
 	}
 
 	for i := 1; i <= len(countryTop.Top); i++ {
@@ -162,7 +163,7 @@ func collectTopTrafficByIPVersion(desc *prometheus.Desc, ch chan<- prometheus.Me
 
 	err := wgclient.GetParsed(href, &ipVersionTop)
 	if err != nil {
-		log.Errorln(err.Error())
+		logging.Error("Error: %v", err)
 	}
 
 	for i := 1; i <= len(ipVersionTop.Top); i++ {
@@ -180,14 +181,14 @@ func collectTopTrafficByIPProtocol(desc *prometheus.Desc, ch chan<- prometheus.M
 
 	err := wgclient.GetParsed(href, &ipProtocolTop)
 	if err != nil {
-		log.Errorln(err.Error())
+		logging.Error("Error: %v", err)
 	}
 
 	for i := 1; i <= len(ipProtocolTop.Top); i++ {
 		k := strconv.Itoa(i)
 		protocolName, err := ipprotocols.GetProtocolName(ipProtocolTop.Top[k].IPProtocol)
 		if err != nil {
-			log.Errorln("failed to get protocol name for protocol number: ", ipProtocolTop.Top[k].IPProtocol)
+			logging.Error("failed to get protocol name for protocol number: %v", ipProtocolTop.Top[k].IPProtocol)
 		}
 		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, float64(ipProtocolTop.Top[k].Value), protocolName)
 	}
@@ -202,7 +203,7 @@ func collectTopTrafficByTalkers(desc *prometheus.Desc, ch chan<- prometheus.Metr
 
 	err := wgclient.GetParsed(href, &talkerTop)
 	if err != nil {
-		log.Errorln(err.Error())
+		logging.Error("Error: %v", err)
 	}
 
 	for i := 1; i <= len(talkerTop.Top); i++ {

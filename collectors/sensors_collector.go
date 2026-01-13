@@ -1,8 +1,10 @@
 package collectors
 
 import (
+	"github.com/tomvil/wanguard_exporter/logging"
+
+
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/log"
 	wgc "github.com/tomvil/wanguard_exporter/client"
 )
 
@@ -44,7 +46,7 @@ type Sensor struct {
 }
 
 func NewSensorsCollector(wgclient *wgc.Client) *SensorsCollector {
-	prefix := "wanguard_sensor_"
+	prefix := "wanguard_sensor"
 	return &SensorsCollector{
 		wgClient:          wgclient,
 		SensorInternalIPS: prometheus.NewDesc(prefix+"internal_ips", "Total number of internal ip addresses", []string{"sensor_name", "sensor_id"}, nil),
@@ -84,7 +86,7 @@ func (c *SensorsCollector) Collect(ch chan<- prometheus.Metric) {
 
 	err := c.wgClient.GetParsed("sensor_live_stats", &sensors)
 	if err != nil {
-		log.Errorln(err.Error())
+		logging.Error("Error: %v", err)
 	}
 
 	for _, s := range sensors {
