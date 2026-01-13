@@ -88,6 +88,19 @@ func NewClient(apiAddress, apiUsername, apiPassword string) (*Client, error) {
 	}, nil
 }
 
+// GetSanitizedTarget extracts a safe, low-cardinality identifier from the API address
+// to be used in Prometheus labels. Returns only the host (e.g., "api.example.com:8080")
+// to prevent cardinality explosion from dynamic paths or query parameters.
+func (c *Client) GetSanitizedTarget() string {
+	u, err := url.Parse(c.apiAddress)
+	if err != nil {
+		// Fallback to safe constant if address is malformed
+		return "invalid_target"
+	}
+	// Return only host:port, stripping scheme, path, query, credentials
+	return u.Host
+}
+
 // basicAuth generates Basic Authentication header
 func basicAuth(username, password string) string {
 	creds := username + ":" + password
@@ -96,12 +109,36 @@ func basicAuth(username, password string) string {
 
 // Get performs an HTTP GET request to the WANGuard API
 func (c *Client) Get(path string) ([]byte, error) {
-	fullPath := c.apiAddress + path
-	if !strings.Contains(path, "/wanguard-api/v1/") {
-		fullPath = c.apiAddress + "/wanguard-api/v1/" + path
+	// Security: Prevent path traversal using URL resolution
+	baseURL, err := url.Parse(c.apiAddress)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base API address: %w", err)
 	}
 
-	req, err := http.NewRequest("GET", fullPath, nil)
+	// Add /wanguard-api/v1/ prefix if not present
+	if !strings.Contains(path, "/wanguard-api/v1/") {
+		path = "/wanguard-api/v1/" + path
+	}
+
+	// Ensure base path ends with slash for proper resolution
+	if !strings.HasSuffix(baseURL.Path, "/") {
+		baseURL.Path += "/"
+	}
+
+	// Parse and resolve path safely (prevents ../ attacks)
+	relPath, err := url.Parse(path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid request path: %w", err)
+	}
+
+	fullURL := baseURL.ResolveReference(relPath)
+
+	// Security: Prevent SSRF via host override (e.g., path="//attacker.com/evil")
+	if fullURL.Host != baseURL.Host {
+		return nil, fmt.Errorf("security violation: path attempts to override host")
+	}
+
+	req, err := http.NewRequest("GET", fullURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -110,17 +147,17 @@ func (c *Client) Get(path string) ([]byte, error) {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		// Update API up metric on error
-		wanguardAPIUp.WithLabelValues(c.apiAddress).Set(0)
+		// Update API up metric on error (using sanitized target)
+		wanguardAPIUp.WithLabelValues(c.GetSanitizedTarget()).Set(0)
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// Update API up metric based on status code
+	// Update API up metric based on status code (using sanitized target)
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		wanguardAPIUp.WithLabelValues(c.apiAddress).Set(1)
+		wanguardAPIUp.WithLabelValues(c.GetSanitizedTarget()).Set(1)
 	} else {
-		wanguardAPIUp.WithLabelValues(c.apiAddress).Set(0)
+		wanguardAPIUp.WithLabelValues(c.GetSanitizedTarget()).Set(0)
 	}
 
 	// Validate status code
