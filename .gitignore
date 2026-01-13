@@ -16,3 +16,4 @@
 compiled_packages/
 .DS_Store
 wanguard_exporter
+.env
