@@ -12,6 +12,7 @@ services:
       - -api.address=${WANGUARD_API_ADDRESS}
       - -api.username=${WANGUARD_API_USERNAME}
       - -api.password=${WANGUARD_API_PASSWORD}
+      - -api.insecure
       - -collector.firewall_rules=false
       - -web.listen-address=:${WANGUARD_EXPORTER_PORT}
     healthcheck:
