@@ -60,6 +60,7 @@ web.metrics-path | Path under which to expose metrics | /metrics
 api.address | WANGuard API Address | 127.0.0.1:81
 api.username | WANGuard API Username | admin
 api.password | WANGuard API Password |
+api.insecure | Allow HTTP for remote hosts and skip TLS certificate verification | false
 licenseCollectorEnabled | Export license metrics | true
 announcementsCollectorEnabled | Export announcements metrics | true
 anomaliesCollectorEnabled | Export anomalies metrics | true
@@ -93,13 +94,21 @@ WANGUARD_PASSWORD=your-password
 
 ### Binary
 ```bash
+# HTTPS (recommended for production)
 ./wanguard_exporter \
   -api.address="https://wanguard-server:81" \
   -api.username="admin" \
   -api.password="password"
+
+# HTTP with -api.insecure (for tunneled connections or internal networks)
+./wanguard_exporter \
+  -api.address="http://127.0.0.1:8081/wanguard-api/" \
+  -api.username="admin" \
+  -api.password="password" \
+  -api.insecure
 ```
 
-**Note**: HTTP is only allowed for localhost (127.0.0.1, ::1). Remote connections require HTTPS.
+**Note**: By default, HTTP is only allowed for localhost (127.0.0.1, ::1). Remote connections require HTTPS unless `-api.insecure` flag is set. Use `-api.insecure` only for trusted internal networks or SSH tunnels.
 
 ## Additional Documentation
 
