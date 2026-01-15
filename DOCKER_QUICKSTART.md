@@ -8,7 +8,7 @@
 
 ---
 
-## Quick Start (3 Steps)
+## Quick Start (4 Steps)
 
 ### 1. Configure Environment Variables
 
@@ -22,25 +22,37 @@ nano .env  # or vim, code, etc.
 
 Required variables:
 ```env
-WANGUARD_ADDRESS=http://your-wanguard-server:81
-WANGUARD_USERNAME=admin
-WANGUARD_PASSWORD=your-secure-password
+# WANGuard API Configuration
+WANGUARD_API_ADDRESS=http://127.0.0.1:8081/wanguard-api/
+WANGUARD_API_USERNAME=admin
+WANGUARD_API_PASSWORD=your-secure-password
+
+# Exporter Configuration
+WANGUARD_EXPORTER_PORT=9868
+
+# Prometheus Configuration
+PROMETHEUS_PORT=9090
+
+# Grafana Configuration
+GRAFANA_PORT=3000
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=admin
 ```
 
-### 2. Start the Exporter
+### 2. Build the Docker Image
 
 ```bash
-# Start only the exporter
-docker-compose up -d
-
-# Or start with Prometheus
-docker-compose --profile prometheus up -d
-
-# Or start full stack (exporter + Prometheus + Grafana)
-docker-compose --profile prometheus --profile grafana up -d
+docker build -t wanguard-exporter:final .
 ```
 
-### 3. Verify It's Running
+### 3. Start the Stack
+
+```bash
+# Start full stack (exporter + prometheus + grafana + nginx)
+docker-compose up -d
+```
+
+### 4. Verify It's Running
 
 ```bash
 # Check container status
@@ -51,46 +63,87 @@ docker-compose logs -f wanguard_exporter
 
 # Test metrics endpoint
 curl http://localhost:9868/metrics
+
+# Test nginx health
+curl http://localhost/health
 ```
 
 ---
 
 ## Accessing Services
 
+All services are accessible via nginx reverse proxy on port 80:
+
 | Service | URL | Default Credentials |
 |---------|-----|---------------------|
-| WANGuard Exporter | http://localhost:9868 | N/A |
-| Prometheus | http://localhost:9090 | N/A |
-| Grafana | http://localhost:3000 | admin / admin |
+| Grafana | http://localhost/grafana/ | admin / admin |
+| Prometheus | http://localhost/prometheus/ | N/A |
+| WANGuard Exporter | http://localhost:9868/metrics | N/A |
+| Health Check | http://localhost/health | N/A |
+
+---
+
+## Architecture
+
+```
+                    +------------------+
+                    |     Nginx        |
+                    |   (port 80)      |
+                    +--------+---------+
+                             |
+            +----------------+----------------+
+            |                                 |
+   /grafana/                         /prometheus/
+            |                                 |
+   +--------v---------+          +-----------v----------+
+   |     Grafana      |          |     Prometheus       |
+   |   (port 3000)    |          |     (port 9090)      |
+   +------------------+          +-----------+----------+
+                                             |
+                                    scrapes metrics
+                                             |
+                                 +-----------v----------+
+                                 | WANGuard Exporter    |
+                                 |    (port 9868)       |
+                                 +-----------+----------+
+                                             |
+                                    HTTP/HTTPS API
+                                             |
+                                 +-----------v----------+
+                                 |   WANGuard Server    |
+                                 +----------------------+
+```
 
 ---
 
 ## Configuration
 
-### Exporter Flags via Environment
+### Environment Variables
 
-Map environment variables to exporter flags:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `WANGUARD_API_ADDRESS` | WANGuard API endpoint URL | - |
+| `WANGUARD_API_USERNAME` | API username | - |
+| `WANGUARD_API_PASSWORD` | API password | - |
+| `WANGUARD_EXPORTER_PORT` | Exporter listen port | 9868 |
+| `PROMETHEUS_PORT` | Prometheus external port | 9090 |
+| `GRAFANA_PORT` | Grafana external port | 3000 |
+| `GRAFANA_ADMIN_USER` | Grafana admin username | admin |
+| `GRAFANA_ADMIN_PASSWORD` | Grafana admin password | admin |
 
-```yaml
-environment:
-  - WANGUARD_ADDRESS=http://wanguard:81        # --api.address
-  - WANGUARD_USERNAME=admin                    # --api.username
-  - WANGUARD_PASSWORD=secret                   # --api.password (or env WANGUARD_PASSWORD)
-  - WANGUARD_METRICS_PATH=/metrics             # --web.metrics-path
-  - WANGUARD_LISTEN_ADDRESS=:9868              # --web.listen-address
-```
+### Security Flag
 
-### Command-line Flags
+The `-api.insecure` flag is enabled by default in docker-compose.yml to allow HTTP connections to the WANGuard API (useful for SSH tunnels or internal networks).
 
-You can also override via command in docker-compose.yml:
-
+For HTTPS connections, you can remove this flag from docker-compose.yml:
 ```yaml
 command:
-  - '--api.address=http://wanguard:81'
-  - '--api.username=admin'
-  - '--api.password=${WANGUARD_PASSWORD}'
-  - '--web.listen-address=:9868'
-  - '--collector.license=true'
+  - -api.address=${WANGUARD_API_ADDRESS}
+  - -api.username=${WANGUARD_API_USERNAME}
+  - -api.password=${WANGUARD_API_PASSWORD}
+  # - -api.insecure  # Remove this line for HTTPS
+  - -collector.firewall_rules=false
+  - -web.listen-address=:${WANGUARD_EXPORTER_PORT}
 ```
 
 ---
@@ -100,59 +153,59 @@ command:
 ### Container Restart Loop
 
 **Symptom:** Container keeps restarting
-**Cause:** Missing `WANGUARD_PASSWORD`
-**Fix:** Create `.env` file with correct credentials
+**Cause:** Missing environment variables or wrong credentials
+**Fix:** Check `.env` file has all required variables
 
 ```bash
 # Check logs
 docker-compose logs wanguard_exporter
 
-# Expected error:
-# ERROR: Please set to WANGuard API Password!
+# Verify .env exists
+cat .env
 ```
 
 ### Connection Refused
 
 **Symptom:** `connection refused` errors in logs
-**Cause:** Wrong `WANGUARD_ADDRESS` or WANGuard API not accessible from container
+**Cause:** Wrong `WANGUARD_API_ADDRESS` or WANGuard API not accessible
 **Fix:**
-- Use host IP instead of `localhost` or `127.0.0.1`
-- Or use `host.docker.internal` on Docker Desktop
+- For SSH tunnel: Use `http://127.0.0.1:8081/wanguard-api/`
+- Ensure `-api.insecure` flag is set for HTTP connections
 
 ```env
-# Bad (inside container, localhost = container itself)
-WANGUARD_ADDRESS=http://127.0.0.1:81
+# SSH tunnel (recommended)
+WANGUARD_API_ADDRESS=http://127.0.0.1:8081/wanguard-api/
 
-# Good (host machine)
-WANGUARD_ADDRESS=http://192.168.1.100:81
+# Direct HTTPS connection
+WANGUARD_API_ADDRESS=https://wanguard-server:81/wanguard-api/
+```
 
-# Good (Docker Desktop special hostname)
-WANGUARD_ADDRESS=http://host.docker.internal:81
+### Nginx 502 Bad Gateway
+
+**Symptom:** 502 error when accessing /grafana/ or /prometheus/
+**Cause:** Backend services not ready yet
+**Fix:** Wait for services to be healthy
+
+```bash
+# Check all services are healthy
+docker-compose ps
+
+# Expected output:
+# grafana             ... Up (healthy)
+# nginx               ... Up (healthy)
+# prometheus          ... Up (healthy)
+# wanguard_exporter   ... Up (healthy)
 ```
 
 ### Platform Warning (ARM64/M1 Macs)
 
-**Symptom:** `platform (linux/amd64) does not match detected host platform (linux/arm64/v8)`
+**Symptom:** `platform (linux/amd64) does not match detected host platform`
 **Impact:** Runs with emulation, slightly slower but works fine
 **Fix (optional):** Build native ARM64 image
 
 ```bash
-# Build for ARM64
-docker buildx build --platform linux/arm64 -t wanguard_exporter:1.6-arm64 .
+docker buildx build --platform linux/arm64 -t wanguard-exporter:final .
 ```
-
----
-
-## Production Deployment
-
-See full guide: [docs/docker/DEPLOYMENT_GUIDE.md](docs/docker/DEPLOYMENT_GUIDE.md)
-
-**Key points:**
-- Use Docker secrets or vault for `WANGUARD_PASSWORD`
-- Enable HTTPS with reverse proxy (nginx, traefik)
-- Configure resource limits in docker-compose.yml
-- Set up log rotation
-- Monitor with Prometheus alerts
 
 ---
 
@@ -162,27 +215,56 @@ See full guide: [docs/docker/DEPLOYMENT_GUIDE.md](docs/docker/DEPLOYMENT_GUIDE.m
 # View logs
 docker-compose logs -f
 
-# Restart services
+# View specific service logs
+docker-compose logs -f wanguard_exporter
+
+# Restart all services
 docker-compose restart
+
+# Restart specific service
+docker-compose restart wanguard_exporter
 
 # Stop all
 docker-compose down
 
-# Rebuild after code changes
-docker-compose build --no-cache
+# Stop and remove volumes (WARNING: deletes data)
+docker-compose down -v
+
+# Rebuild image after code changes
+docker build -t wanguard-exporter:final . --no-cache
+
+# Update and restart
+docker-compose pull && docker-compose up -d
 
 # Check resource usage
-docker stats wanguard_exporter
+docker stats
 
 # Execute command inside container
-docker-compose exec wanguard_exporter /bin/sh
+docker-compose exec grafana /bin/sh
 ```
 
 ---
 
-## Next Steps
+## Production Deployment
 
-1. Configure Prometheus scraping (see `docker/prometheus.yml`)
-2. Set up Grafana dashboards
-3. Configure alerting rules (see `docker/alert_rules.yml`)
-4. Review security checklist: [docs/docker/PRODUCTION_VALIDATION.md](docs/docker/PRODUCTION_VALIDATION.md)
+See full guide: [docs/docker/DEPLOYMENT_GUIDE.md](docs/docker/DEPLOYMENT_GUIDE.md)
+
+**Key points:**
+- Use Docker secrets or vault for `WANGUARD_API_PASSWORD`
+- Configure SSL/TLS in nginx for production
+- Configure resource limits in docker-compose.yml
+- Set up log rotation (already configured with json-file driver)
+- Monitor with Prometheus alerts (see `docker/alert_rules.yml`)
+
+---
+
+## Files Reference
+
+| File | Description |
+|------|-------------|
+| `docker-compose.yml` | Main stack configuration |
+| `.env.example` | Environment variables template |
+| `docker/nginx/nginx.conf` | Nginx reverse proxy configuration |
+| `docker/prometheus.yml` | Prometheus scrape configuration |
+| `docker/alert_rules.yml` | Prometheus alerting rules |
+| `docker/grafana-provisioning/` | Grafana datasources and dashboards |
