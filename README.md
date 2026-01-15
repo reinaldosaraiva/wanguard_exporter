@@ -14,14 +14,50 @@ nano .env
 # 3. Build the Docker image
 docker build -t wanguard-exporter:final .
 
-# 4. Start the stack (exporter + prometheus + grafana)
+# 4. Start the stack (exporter + prometheus + grafana + nginx)
 docker-compose up -d
 
-# 5. Verify metrics
-curl http://localhost:9868/metrics
+# 5. Verify services are running
+docker-compose ps
+
+# 6. Access the dashboards
+# Grafana: http://localhost/grafana/
+# Prometheus: http://localhost/prometheus/
+# Metrics: http://localhost:9868/metrics
 ```
 
 See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) for detailed instructions.
+
+## Architecture
+
+```
+                    +------------------+
+                    |     Nginx        |
+                    |   (port 80)      |
+                    +--------+---------+
+                             |
+            +----------------+----------------+
+            |                                 |
+   /grafana/                         /prometheus/
+            |                                 |
+   +--------v---------+          +-----------v----------+
+   |     Grafana      |          |     Prometheus       |
+   |   (port 3000)    |          |     (port 9090)      |
+   +------------------+          +-----------+----------+
+                                             |
+                                    scrapes metrics
+                                             |
+                                 +-----------v----------+
+                                 | WANGuard Exporter    |
+                                 |    (port 9868)       |
+                                 +-----------+----------+
+                                             |
+                                    HTTP/HTTPS API
+                                             |
+                                 +-----------v----------+
+                                 |   WANGuard Server    |
+                                 +----------------------+
+```
 
 ## Install
 
