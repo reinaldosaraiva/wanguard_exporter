@@ -24,7 +24,8 @@ type Client struct {
 }
 
 // NewClient creates a new WANGuard API client with security configurations
-func NewClient(apiAddress, apiUsername, apiPassword string) (*Client, error) {
+// If insecure is true, allows HTTP for remote hosts and skips TLS certificate verification
+func NewClient(apiAddress, apiUsername, apiPassword string, insecure bool) (*Client, error) {
 	// Validate API address
 	parsedURL, err := url.Parse(apiAddress)
 	if err != nil {
@@ -39,15 +40,15 @@ func NewClient(apiAddress, apiUsername, apiPassword string) (*Client, error) {
 		return nil, errors.New("API address must include host")
 	}
 
-	// Security: Block HTTP for non-localhost to prevent credential leakage
-	if parsedURL.Scheme == "http" {
+	// Security: Block HTTP for non-localhost to prevent credential leakage (unless insecure mode)
+	if parsedURL.Scheme == "http" && !insecure {
 		host := parsedURL.Hostname()
 		if host != "localhost" && host != "127.0.0.1" && host != "::1" {
-			return nil, fmt.Errorf("HTTP is not allowed for remote hosts (use HTTPS): %s", host)
+			return nil, fmt.Errorf("HTTP is not allowed for remote hosts (use HTTPS or -api.insecure flag): %s", host)
 		}
 	}
 
-	// Configure secure HTTP client
+	// Configure HTTP client
 	httpClient := &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
@@ -59,17 +60,17 @@ func NewClient(apiAddress, apiUsername, apiPassword string) (*Client, error) {
 			DisableCompression:    false,
 			TLSClientConfig: &tls.Config{
 				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: false,
+				InsecureSkipVerify: insecure, // Skip TLS verification if insecure mode
 			},
 		},
-		// Prevent credential leaks via redirects
+		// Prevent credential leaks via redirects (relaxed in insecure mode)
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 10 {
 				return errors.New("stopped after 10 redirects")
 			}
-			// Only allow HTTPS for redirects
-			if req.URL.Scheme != "https" {
-				return errors.New("HTTPS required for redirects")
+			// Only enforce HTTPS for redirects in secure mode
+			if !insecure && req.URL.Scheme != "https" {
+				return errors.New("HTTPS required for redirects (use -api.insecure to allow HTTP)")
 			}
 			// Do not forward credentials on cross-origin redirects
 			if req.URL.Host != via[0].URL.Host {

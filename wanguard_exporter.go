@@ -29,6 +29,7 @@ var (
 	apiAddress  = flag.String("api.address", "http://127.0.0.1:81", "WANGuard API address")
 	apiUsername = flag.String("api.username", "admin", "WANGuard API username")
 	apiPassword = flag.String("api.password", "", "WANGuard API password")
+	apiInsecure = flag.Bool("api.insecure", false, "Allow HTTP for remote hosts and skip TLS certificate verification")
 
 	licenseCollectorEnabled       = flag.Bool("collector.license", true, "Expose license metrics")
 	announcementsCollectorEnabled = flag.Bool("collector.announcements", true, "Expose announcements metrics")
@@ -69,7 +70,7 @@ func main() {
 		}
 	}
 
-	wgClient, err := wgc.NewClient(*apiAddress, *apiUsername, *apiPassword)
+	wgClient, err := wgc.NewClient(*apiAddress, *apiUsername, *apiPassword, *apiInsecure)
 	if err != nil {
 		logging.Fatal("Failed to create WANGuard API client: %v", err)
 	}
