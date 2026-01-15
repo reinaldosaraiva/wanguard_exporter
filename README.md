@@ -11,10 +11,13 @@ cp .env.example .env
 # 2. Edit .env with your WANGuard credentials
 nano .env
 
-# 3. Start the exporter
+# 3. Build the Docker image
+docker build -t wanguard-exporter:final .
+
+# 4. Start the stack (exporter + prometheus + grafana)
 docker-compose up -d
 
-# 4. Verify metrics
+# 5. Verify metrics
 curl http://localhost:9868/metrics
 ```
 
@@ -82,6 +85,10 @@ This will be used automatically if `api.password` flag is not set.
 
 ### Docker
 ```bash
+# Build the image first
+docker build -t wanguard-exporter:final .
+
+# Start the stack
 docker-compose up -d
 ```
 
