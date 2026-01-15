@@ -24,12 +24,7 @@ scrape_configs:
 
   - job_name: 'wanguard_exporter'
     static_configs:
-      - targets: ['wanguard_exporter:9868']
+      - targets: ['172.18.0.1:9868']  # Gateway IP to access host network from bridge network container
     scrape_interval: 15s
     scrape_timeout: 10s
     metrics_path: '/metrics'
-
-# Configurações de storage
-storage:
-  tsdb:
-    retention.time: 15d

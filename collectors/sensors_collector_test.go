@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewSensorsCollector(t *testing.T) {
-	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p")
+	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL", false), "u", "p")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +21,7 @@ func TestNewSensorsCollector(t *testing.T) {
 }
 
 func TestSensorsCollectorDescribe(t *testing.T) {
-	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p")
+	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL", false), "u", "p")
 	if err != nil {
 		t.Fatal(err)
 	}

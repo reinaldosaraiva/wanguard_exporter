@@ -12,8 +12,8 @@ type Response struct {
 	Test string `json:"test"`
 }
 
-func TestNewClient(t *testing.T) {
-	client, err := NewClient("http://127.0.0.1", "u", "p")
+func TestNewClient(t *testing.T, false) {
+	client, err := NewClient("http://127.0.0.1", "u", "p", false)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -32,14 +32,14 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewClientInvalidAddress(t *testing.T) {
-	_, err := NewClient("invalid://url", "u", "p")
+	_, err := NewClient("invalid://url", "u", "p", false)
 	if err == nil {
 		t.Error("Expected error for invalid address")
 	}
 }
 
 func TestNewClientMissingHost(t *testing.T) {
-	_, err := NewClient("http://", "u", "p")
+	_, err := NewClient("http://", "u", "p", false)
 	if err == nil {
 		t.Error("Expected error for missing host")
 	}
@@ -69,7 +69,7 @@ func TestGet(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient(server.URL, "u", "p")
+	client, err := NewClient(server.URL, "u", "p", false)
 	if err != nil {
 		t.Fatalf(errMsgExpectedNoError, err)
 	}
@@ -93,7 +93,7 @@ func TestGetParsed(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient(server.URL, "u", "p")
+	client, err := NewClient(server.URL, "u", "p", false)
 	if err != nil {
 		t.Fatalf(errMsgExpectedNoError, err)
 	}
@@ -118,7 +118,7 @@ func BenchmarkGetParsed(b *testing.B) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient(server.URL, "u", "p")
+	client, err := NewClient(server.URL, "u", "p", false)
 	if err != nil {
 		b.Fatalf(errMsgExpectedNoError, err)
 	}
