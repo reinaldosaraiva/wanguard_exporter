@@ -12,7 +12,7 @@ type Response struct {
 	Test string `json:"test"`
 }
 
-func TestNewClient(t *testing.T, false) {
+func TestNewClient(t *testing.T) {
 	client, err := NewClient("http://127.0.0.1", "u", "p", false)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
@@ -63,6 +63,7 @@ func TestGet(t *testing.T) {
 			t.Errorf("Expected %s, got %s", expectedAuth, authHeader)
 		}
 
+		w.Header().Set("Content-Type", "application/json")
 		if _, err := w.Write([]byte("test")); err != nil {
 			t.Errorf(errMsgExpectedNoError, err)
 		}

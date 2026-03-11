@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewTrafficCollector(t *testing.T) {
-	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL", false), "u", "p")
+	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +21,7 @@ func TestNewTrafficCollector(t *testing.T) {
 }
 
 func TestTrafficCollectorDescribe(t *testing.T) {
-	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL", false), "u", "p")
+	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestTrafficCollectorDescribe(t *testing.T) {
 	trafficCollector.Describe(ch)
 	close(ch)
 
-	if len(ch) != 20 {
-		t.Errorf("Expected 20 metric descriptors, got %d", len(ch))
+	if len(ch) != 16 {
+		t.Errorf("Expected 16 metric descriptors, got %d", len(ch))
 	}
 }

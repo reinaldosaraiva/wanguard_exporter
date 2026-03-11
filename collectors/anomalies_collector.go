@@ -28,13 +28,25 @@ type Anomaly struct {
 	Bits_s    string `json:"bits/s"`
 	Packets   string
 	Bits      string
+	Severity  string
+	Direction string
+	IpGroup   string `json:"ip_group"`
+	Decoder   struct {
+		DecoderName string `json:"decoder_name"`
+	} `json:"decoder"`
+	Sensor struct {
+		SensorInterfaceName string `json:"sensor_interface_name"`
+	} `json:"sensor"`
+	Response struct {
+		ResponseName string `json:"response_name"`
+	} `json:"response"`
 }
 
 func NewAnomaliesCollector(wgclient *wgc.Client) *AnomaliesCollector {
 	prefix := "wanguard_anomalies"
 	return &AnomaliesCollector{
 		wgClient:          wgclient,
-		AnomalyActive:     prometheus.NewDesc(prefix+"active", "Active anomalies at the moment", []string{"prefix", "anomaly", "anomaly_id", "duration", "pkts_s", "packets", "bits_s", "bits"}, nil),
+		AnomalyActive:     prometheus.NewDesc(prefix+"active", "Active anomalies at the moment", []string{"prefix", "anomaly", "anomaly_id", "duration", "pkts_s", "packets", "bits_s", "bits", "severity", "direction", "ip_group", "decoder", "sensor", "response"}, nil),
 		AnomaliesFinished: prometheus.NewDesc(prefix+"finished", "Number of finished anomalies", nil, nil),
 	}
 }
@@ -52,7 +64,7 @@ func (c *AnomaliesCollector) Collect(ch chan<- prometheus.Metric) {
 func collectActiveAnomalies(desc *prometheus.Desc, wgclient *wgc.Client, ch chan<- prometheus.Metric) {
 	var anomalies []Anomaly
 
-	err := wgclient.GetParsed("anomalies?status=Active&fields=anomaly_id,anomaly,prefix,duration,pkts/s,packets,bits/s,bits", &anomalies)
+	err := wgclient.GetParsed("anomalies?status=Active&fields=anomaly_id,anomaly,prefix,duration,pkts/s,packets,bits/s,bits,severity,direction,ip_group,decoder,sensor,response", &anomalies)
 	if err != nil {
 		return
 	}
@@ -66,7 +78,13 @@ func collectActiveAnomalies(desc *prometheus.Desc, wgclient *wgc.Client, ch chan
 			anomaly.Pkts_s,
 			anomaly.Packets,
 			anomaly.Bits_s,
-			anomaly.Bits)
+			anomaly.Bits,
+			anomaly.Severity,
+			anomaly.Direction,
+			anomaly.IpGroup,
+			anomaly.Decoder.DecoderName,
+			anomaly.Sensor.SensorInterfaceName,
+			anomaly.Response.ResponseName)
 	}
 }
 

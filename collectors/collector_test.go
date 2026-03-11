@@ -8,6 +8,14 @@ import (
 
 )
 
+// jsonMiddleware sets Content-Type to application/json for all test handlers
+func jsonMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func TestMain(m *testing.M) {
 	mux := http.NewServeMux()
 
@@ -30,6 +38,14 @@ func TestMain(m *testing.M) {
 
 	mux.HandleFunc("/wanguard-api/v1/bgp_connectors", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write([]byte(bgpConnectorsPayload())); err != nil {
+		}
+	})
+
+	mux.HandleFunc("/wanguard-api/v1/bgp_connectors/1", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/wanguard-api/v1/bgp_connectors/1/status" {
+			return
+		}
+		if _, err := w.Write([]byte(bgpConnectorDetailPayload())); err != nil {
 		}
 	})
 
@@ -128,7 +144,7 @@ func TestMain(m *testing.M) {
 		}
 	})
 
-	server := httptest.NewServer(mux)
+	server := httptest.NewServer(jsonMiddleware(mux))
 	defer server.Close()
 
 	os.Setenv("TEST_SERVER_URL", server.URL)
@@ -194,6 +210,16 @@ func bgpConnectorsPayload() string {
 ]`
 }
 
+func bgpConnectorDetailPayload() string {
+	return `{
+  "bgp_connector_id": "1",
+  "bgp_connector_name": "BGP Connector 1",
+  "connector_role": "Mitigation",
+  "device_group": "br-se1-bl0",
+  "bgp_flowspec": "Disabled"
+}`
+}
+
 func filtersPayload() string {
 	return `[
   {
@@ -248,6 +274,21 @@ func anomaliesPayload() string {
     "bits/s": "9014400",
     "packets": "320020500",
     "bits": "169576384000",
+    "severity": "169.4",
+    "direction": "Incoming",
+    "ip_group": "MGC",
+    "decoder": {
+      "decoder_id": "0",
+      "decoder_name": "ICMP"
+    },
+    "sensor": {
+      "sensor_interface_name": "br-se1-bl0",
+      "sensor_interface_id": "4-1-0"
+    },
+    "response": {
+      "response_id": "1",
+      "response_name": "MGC"
+    },
     "href": "/wanguard-api/v1/anomalies/1"
   }
 ]`

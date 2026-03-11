@@ -39,6 +39,7 @@ var (
 	sensorsCollectorEnabled       = flag.Bool("collector.sensors", true, "Expose sensors metrics")
 	trafficCollectorEnabled       = flag.Bool("collector.traffic", true, "Expose traffic metrics")
 	firewallRulesCollectorEnabled = flag.Bool("collector.firewall_rules", true, "Expose firewall rules metrics")
+	bgpCollectorEnabled           = flag.Bool("collector.bgp", true, "Expose BGP connector metrics")
 
 	cl             []collectorsList
 	wanguardAPIUp *prometheus.GaugeVec
@@ -83,6 +84,7 @@ func main() {
 		{sensorsCollectorEnabled, collectors.NewSensorsCollector(wgClient)},
 		{trafficCollectorEnabled, collectors.NewTrafficCollector(wgClient)},
 		{firewallRulesCollectorEnabled, collectors.NewFirewallRulesCollector(wgClient)},
+		{bgpCollectorEnabled, collectors.NewBGPCollector(wgClient)},
 	}
 
 	startServer()

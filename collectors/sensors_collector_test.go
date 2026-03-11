@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewSensorsCollector(t *testing.T) {
-	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL", false), "u", "p")
+	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,17 +21,17 @@ func TestNewSensorsCollector(t *testing.T) {
 }
 
 func TestSensorsCollectorDescribe(t *testing.T) {
-	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL", false), "u", "p")
+	wgcClient, err := wgc.NewClient(os.Getenv("TEST_SERVER_URL"), "u", "p", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	sensorsCollector := NewSensorsCollector(wgcClient)
-	ch := make(chan *prometheus.Desc, 1)
+	ch := make(chan *prometheus.Desc, 20)
 	sensorsCollector.Describe(ch)
 	close(ch)
 
-	if len(ch) != 1 {
-		t.Errorf("Expected 1 metric descriptor, got %d", len(ch))
+	if len(ch) != 13 {
+		t.Errorf("Expected 13 metric descriptors, got %d", len(ch))
 	}
 }
